@@ -415,7 +415,6 @@ options to another `devise_for` call outside the scope. Here is an example:
 ERROR
         end
 
-        path, @scope[:path] = @scope[:path], nil
         path_prefix = Devise.omniauth_path_prefix || "/#{mapping.fullpath}/auth".squeeze("/")
 
         set_omniauth_path_prefix!(path_prefix)
@@ -426,27 +425,25 @@ ERROR
           constraints: { provider: providers },
           to: "#{controllers[:omniauth_callbacks]}#passthru",
           as: :omniauth_authorize,
+          path: nil,
           via: [:get, :post]
 
         match "#{path_prefix}/:action/callback",
           constraints: { action: providers },
           to: "#{controllers[:omniauth_callbacks]}#:action",
           as: :omniauth_callback,
+          path: nil,
           via: [:get, :post]
-      ensure
-        @scope[:path] = path
       end
 
       def with_devise_exclusive_scope(new_path, new_as, options) #:nodoc:
-        current_scope = @scope.dup
-
         exclusive = { as: new_as, path: new_path, module: nil }
         exclusive.merge!(options.slice(:constraints, :defaults, :options))
 
-        exclusive.each_pair { |key, value| @scope[key] = value }
+        @scope = @scope.new exclusive
         yield
       ensure
-        @scope = current_scope
+        @scope = @scope.parent
       end
 
       def constraints_for(method_to_apply, scope=nil, block=nil)
